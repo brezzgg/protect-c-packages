@@ -1,3 +1,4 @@
+// Package conf v0.1.0
 package conf
 
 import (

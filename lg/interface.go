@@ -1,3 +1,4 @@
+// Package lg v0.1.0
 package lg
 
 import (
