@@ -1,0 +1,9 @@
+# test file
+test.go
+
+# idea igonres
+/shelf/
+/workspace.xml
+/httpRequests/
+/dataSources/
+/dataSources.local.xml
