@@ -1,5 +1,10 @@
 package conf
 
+import (
+	"errors"
+	"fmt"
+)
+
 type ParameterWithDefault struct {
 	Default, key string
 	dest         *string
@@ -48,7 +53,8 @@ type ParameterRequired struct {
 
 func (p ParameterRequired) String(val string) string {
 	if len(val) == 0 {
-		return hash
+		parseError = errors.New(fmt.Sprintf("required parameter '%s' is missing", p.key))
+		return ""
 	}
 	return val
 }

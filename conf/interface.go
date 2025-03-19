@@ -7,13 +7,11 @@ import (
 
 var (
 	parameters map[string]string
-	hash       string
+	parseError error
 )
 
 func Parse(parsers ...Parser) error {
 	parameters = nil
-	hash = getRequiredString()
-
 	result := make(map[string]string)
 
 	for _, parser := range parsers {
@@ -21,13 +19,15 @@ func Parse(parsers ...Parser) error {
 			if len(result[key]) != 0 {
 				return errors.New(fmt.Sprintf("parameter '%s' was duplicated", key))
 			}
-			if value == hash {
-				return errors.New(fmt.Sprintf("required parameter '%s' is not set", key))
-			}
 			result[key] = value
 		}
 	}
 	parameters = result
+	
+	if parseError != nil {
+		return parseError
+	}
+
 	return nil
 }
 
