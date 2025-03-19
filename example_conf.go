@@ -18,6 +18,7 @@ func ExampleConfigure() {
 	)
 
 	os.Setenv("OTHER_SOME_KEY", "other some value")
+	os.Args = append(os.Args, "--some-int", "-5")
 
 	err := conf.Parse(
 		conf.Env( // parse parameters from env
@@ -31,7 +32,7 @@ func ExampleConfigure() {
 			// err: parameter 'some_key' was duplicated
 			conf.DParam("some-string", "some-string-value").Write(&someString),
 			// write result of parse to var
-			conf.DParam("some-int", "1").WriteConv(&someInt),
+			conf.RParam("some-int").WriteConv(&someInt),
 			// write result`s converter to var
 		),
 	)
