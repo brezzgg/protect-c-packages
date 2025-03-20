@@ -44,9 +44,9 @@ func ExampleConfigure() {
 	fmt.Println("specific values:")
 	fmt.Println("some-string:", someString)
 	fmt.Println("other-some-key:", conf.Get("OTHER_SOME_KEY")) // get parsed value by key
-	fmt.Println("some-int:", someInt.Int())                    // convert value to int
+	fmt.Println("some-int:", someInt.MustInt())                // convert value to int
 
-	fmt.Println("all values:")
+	fmt.Println("\nall values:")
 	b, _ := json.MarshalIndent(
 		conf.Geta(), // get all parsed values
 		"", "  ",
