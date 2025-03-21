@@ -42,6 +42,9 @@ func Warn(args ...any) {
 Error function outputs a log with the level LogLevelError.
 */
 func Error(args ...any) {
+	if err, ok := args[0].(error); ok {
+		args[0] = "Undescribed error: " + err.Error()
+	}
 	globalLogger.Handle(args, LogLevelError, nil)
 }
 
@@ -51,6 +54,10 @@ and terminates the program with code 1,
 equivalent of os.Exit(1).
 */
 func Fatal(args ...any) {
+	if err, ok := args[0].(error); ok {
+		args[0] = "Undescribed error: " + err.Error()
+	}
+
 	readyCh := make(chan any)
 	globalLogger.Handle(args, LogLevelFatal, readyCh)
 
