@@ -28,17 +28,19 @@ func (c ConsoleSerializer) Serialize(m Message) string {
 	}
 
 	var caller, level string
-	if len(m.Level.Name) < 5 {
-		for len(m.Level.Name) < 5 {
-			m.Level.Name += " "
+	levelSpaces := ""
+
+	if form := m.Level.Formatter(); len(form) < 5 {
+		for len(form)+len(levelSpaces) < 5 {
+			levelSpaces += " "
 		}
 	}
 	if c.DisableColors {
 		caller = m.Caller.Standard()
-		level = m.Level.Standard()
+		level = m.Level.Standard() + levelSpaces
 	} else {
 		caller = m.Caller.Colorize(ClrFgCyan)
-		level = m.Level.Colorized()
+		level = m.Level.Colorized() + levelSpaces
 	}
 
 	return fmt.Sprintf("%s  %s  %s  %s %s",

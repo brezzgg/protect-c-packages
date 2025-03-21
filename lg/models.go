@@ -1,12 +1,12 @@
 package lg
 
 var (
-	LogLevelDebug       = NewLogLevel("Debug", ClrFgBoldGreen)
-	LogLevelInfo        = NewLogLevel("Info", ClrFgBoldBlue)
-	LogLevelWarn        = NewLogLevel("Warn", ClrFgBoldYellow)
-	LogLevelError       = NewLogLevel("Error", ClrFgBoldRed)
-	LogLevelFatal       = NewLogLevel("Fatal", ClrFgBoldRed)
-	logLevelLoggerError = NewLogLevel("LoggerError", ClrFgBoldPink)
+	LogLevelDebug       = NewLogLevel(ClrFgBoldGreen, "Debug")
+	LogLevelInfo        = NewLogLevel(ClrFgBoldBlue, "Info")
+	LogLevelWarn        = NewLogLevel(ClrFgBoldYellow, "Warn")
+	LogLevelError       = NewLogLevel(ClrFgBoldRed, "Error")
+	LogLevelFatal       = NewLogLevel(ClrFgBoldRed, "Fatal")
+	logLevelLoggerError = NewLogLevel(ClrFgBoldPink, "LoggerError")
 )
 
 const (

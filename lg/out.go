@@ -7,28 +7,38 @@ import (
 )
 
 type LogLevel struct {
-	Name  string
-	color string
+	Levels []string
+	color  string
 }
 
-func NewLogLevel(name string, asciiColor string) LogLevel {
-	return LogLevel{name, asciiColor}
+func NewLogLevel(asciiClr string, levels ...string) LogLevel {
+	for i := range levels {
+		levels[i] = strings.TrimSpace(levels[i])
+	}
+	return LogLevel{
+		Levels: levels,
+		color:  asciiClr,
+	}
 }
 
 func (l LogLevel) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strings.ToLower(l.Name))
+	return json.Marshal(l.Levels)
 }
 
 func (l LogLevel) Colorize(color string) string {
-	return fmt.Sprintf("%s%s%s", color, l.Name, ClrReset)
+	return fmt.Sprintf("%s%s%s", color, l.Formatter(), ClrReset)
 }
 
 func (l LogLevel) Colorized() string {
-	return fmt.Sprintf("%s%s%s", l.color, l.Name, ClrReset)
+	return fmt.Sprintf("%s%s%s", l.color, l.Formatter(), ClrReset)
 }
 
 func (l LogLevel) Standard() string {
-	return l.Name
+	return l.Formatter()
+}
+
+func (l LogLevel) Formatter() string {
+	return strings.Join(l.Levels, ".")
 }
 
 type Caller struct {
