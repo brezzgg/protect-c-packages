@@ -1,6 +1,7 @@
 package lg
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -37,8 +38,26 @@ func (l LogLevel) Standard() string {
 	return l.Formatter()
 }
 
+func (l LogLevel) AppendLevels(levels ...string) LogLevel {
+	l.Levels = append(l.Levels, levels...)
+	return l
+}
+
 func (l LogLevel) Formatter() string {
 	return strings.Join(l.Levels, ".")
+}
+
+func (l LogLevel) Equal(other LogLevel) bool {
+	curJson, err := json.Marshal(l)
+	if err != nil {
+		return false
+	}
+	otherJson, err := json.Marshal(other)
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(curJson, otherJson)
 }
 
 type Caller struct {
@@ -62,4 +81,16 @@ func (c Caller) Standard() string {
 
 func (c Caller) formatter() string {
 	return fmt.Sprintf("%s.%s:%d", c.File, c.Method, c.Line)
+}
+
+func (c Caller) Equal(other Caller) bool {
+	curJson, err := json.Marshal(c)
+	if err != nil {
+		return false
+	}
+	otherJson, err := json.Marshal(other)
+	if err != nil {
+		return false
+	}
+	return bytes.Equal(curJson, otherJson)
 }
