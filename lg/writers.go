@@ -14,8 +14,13 @@ func NewConsoleWriter() *ConsoleWriter {
 }
 
 func (c ConsoleWriter) Write(str string) error {
-	_, err := fmt.Fprintln(os.Stdout, str)
-	return err
+	if _, err := os.Stdout.Write([]byte(str + "\n")); err != nil {
+		return err
+	}
+	if err := os.Stdout.Sync(); err != nil {
+		return err
+	}
+	return nil
 }
 
 type FileWriter struct {
