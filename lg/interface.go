@@ -42,29 +42,38 @@ func Warn(args ...any) {
 Error function outputs a log with the level LogLevelError.
 */
 func Error(args ...any) {
-	if err, ok := args[0].(error); ok {
-		args[0] = "Undescribed error: " + err.Error()
-	}
+	args = errorDelivery(args...)
 	globalLogger.Handle(args, LogLevelError, nil)
 }
 
 /*
 Fatal function outputs a log with the level LogLevelFatal
-and terminates the program with code 1,
+and terminates the program with exit code 1,
 equivalent of os.Exit(1).
 */
 func Fatal(args ...any) {
-	if err, ok := args[0].(error); ok {
-		args[0] = "Undescribed error: " + err.Error()
-	}
+	args = errorDelivery(args...)
 
 	readyCh := make(chan any)
 	globalLogger.Handle(args, LogLevelFatal, readyCh)
 
 	<-readyCh
-	// Print stack trace end exit with code 1
-	// To make sure all the logs are output to the console
-	time.Sleep(100 * time.Millisecond)
+	// exit with code 1
+	os.Exit(1)
+}
+
+/*
+Panic function outputs a log with the level LogLevelPanic,
+terminates the program with exit code 1 and print stack trace.
+*/
+func Panic(args ...any) {
+	args = errorDelivery(args...)
+
+	readyCh := make(chan any)
+	globalLogger.Handle(args, LogLevelPanic, readyCh)
+
+	<-readyCh
+	// print stack trace and exit with code 1
 	debug.PrintStack()
 	os.Exit(1)
 }
@@ -82,4 +91,12 @@ which notifies you that a function has been called.
 */
 func Invoked() {
 	globalLogger.Handle([]any{"Invoked"}, LogLevelDebug, nil)
+}
+
+func errorDelivery(args ...any) []any {
+	if err, ok := args[0].(error); ok {
+		args[0] = "Undescribed error: "
+		args = append(args, err)
+	}
+	return args
 }

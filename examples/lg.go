@@ -49,5 +49,6 @@ func ExampleLogLevels() {
 	lg.Info(str, ctx)
 	lg.Warn(str, ctx)
 	lg.Error(str, ctx)
-	lg.Fatal(str, ctx)
+	//lg.Fatal(str, ctx)
+	lg.Panic(str, ctx)
 }

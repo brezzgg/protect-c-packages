@@ -6,6 +6,7 @@ var (
 	LogLevelWarn        = NewLogLevel(ClrFgBoldYellow, "Warn")
 	LogLevelError       = NewLogLevel(ClrFgBoldRed, "Error")
 	LogLevelFatal       = NewLogLevel(ClrFgBoldRed, "Fatal")
+	LogLevelPanic       = NewLogLevel(ClrFgBoldRed, "Panic")
 	logLevelLoggerError = NewLogLevel(ClrFgBoldPink, "LoggerError")
 )
 
