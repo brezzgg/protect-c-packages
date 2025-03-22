@@ -1,10 +1,14 @@
 package lg
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
+	"unicode"
 )
 
 type Logger struct {
@@ -30,24 +34,51 @@ var pipeMutex sync.Mutex
 
 func (l *Logger) Handle(m []any, level LogLevel, ch chan<- any) {
 	pipeMutex.Lock()
-	go func(m []any, level LogLevel, cal Caller) {
+	go func(m []any, level LogLevel, cal Caller, time time.Time) {
 		defer close(ch)
 		var msg Message
 
-		text, msgCtx, err := l.CheckArgs(m)
-		if err != nil {
-			msg = NewMessage("Failed to parse message context",
-				logLevelLoggerError,
-				cal,
-				C{"parserError": err.Error()},
-			)
-		} else {
-			msg = NewMessage(text,
-				level,
-				cal,
-				msgCtx,
-			)
+		// try to find formatted error in args
+		for i, item := range m {
+			if e, ok := item.(error); ok && strings.HasPrefix(e.Error(), FormatedErrorKey) {
+				formStr := strings.TrimPrefix(e.Error(), FormatedErrorKey)
+				err := json.Unmarshal([]byte(formStr), &msg)
+				if err == nil {
+					// mark the level as formatted error
+					msg.Level = level.AppendLevels("(formatted)")
+
+					// put all formatted context to key 'formatted'
+					if msg.Context != nil {
+						temp := msg.Context
+						msg.Context = make(C)
+						msg.Context["formatted"] = temp
+					}
+
+					// remove formatted error argument
+					m = append(m[:i], m[i+1:]...)
+				}
+			}
 		}
+
+		// handle arguments
+		err := l.CheckArgs(m, &msg.Text, &msg.Context)
+		if err != nil {
+			msg = Message{
+				Caller:  cal,
+				Level:   logLevelLoggerError,
+				Text:    "Failed to parse message context",
+				Context: C{"parserError": err.Error()},
+			}
+		} else {
+			if msg.Caller.Equal(Caller{}) {
+				msg.Caller = cal
+			}
+			if msg.Level.Equal(LogLevel{}) {
+				msg.Level = level
+			}
+		}
+
+		msg.Time = time
 
 		var wg sync.WaitGroup
 		wg.Add(len(l.Pipes))
@@ -63,38 +94,54 @@ func (l *Logger) Handle(m []any, level LogLevel, ch chan<- any) {
 		pipeMutex.Unlock()
 
 		ch <- 1
-	}(m, level, GetCallerInfo(2))
+	}(m, level, GetCallerInfo(2), time.Now())
 }
 
-func (l *Logger) CheckArgs(args []any) (string, C, error) {
+func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
+	appendBodyFunc := func(body string) {
+		if len(*msgBody) > 0 {
+			r := []rune((*msgBody))
+			if unicode.IsUpper(r[0]) && unicode.IsLower(r[1]) {
+				*msgBody = string(unicode.ToLower(r[0])) + (*msgBody)[1:]
+			}
+		}
+		if len(*msgBody) == 0 {
+			*msgBody = body
+		} else {
+			*msgBody = strings.TrimSuffix(strings.TrimSpace(body), ":") + ": " + strings.TrimSpace(*msgBody)
+		}
+	}
+
 	if len(args) == 0 {
-		return "", C{}, errors.New("no arguments")
+		return errors.New("no arguments")
 	}
 	if len(args) == 1 {
-		if msg, ok := args[0].(string); ok {
-			return msg, C{}, nil
+		if body, ok := args[0].(string); ok {
+			appendBodyFunc(body)
+			return nil
 		}
-		return "", C{}, errors.New("invalid argument")
+		return errors.New("invalid argument")
 	}
 
-	var msg string
-	if r, ok := args[0].(string); ok {
-		msg = r
+	if body, ok := args[0].(string); ok {
+		appendBodyFunc(body)
 	} else {
-		return "", C{}, errors.New("invalid argument")
+		return errors.New("invalid argument")
 	}
 
-	msgCtx := make(C)
+	if *msgCtx == nil {
+		*msgCtx = make(C)
+	}
 	for itemNum, item := range args {
 		if itemNum == 0 {
 			continue
 		}
 		l.TypeConv.ConvAndPush(item, func(k string, v any) {
-			msgCtx[l.findKey(k, msgCtx)] = v
+			(*msgCtx)[l.findKey(k, *msgCtx)] = v
 		})
 	}
 
-	return msg, msgCtx, nil
+	return nil
 }
 
 func (*Logger) findKey(k string, m C) string {

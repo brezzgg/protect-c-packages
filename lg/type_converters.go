@@ -1,5 +1,7 @@
 package lg
 
+const FormatedErrorKey = "$formattedError"
+
 type DefaultTypeConverter struct{}
 
 func (DefaultTypeConverter) ConvAndPush(item any, push func(key string, val any)) {

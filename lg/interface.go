@@ -1,9 +1,10 @@
 package lg
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 	"runtime/debug"
-	"time"
 )
 
 var (
@@ -83,6 +84,26 @@ Log function outputs a log with your custom LogLevel.
 */
 func Log(level LogLevel, args ...any) {
 	globalLogger.Handle(args, level, nil)
+}
+
+/*
+FormatError is a function that creates an error recognizable by the Logger,
+which, when passed to the Fatal or Error function, will be displayed as,
+as it was created.
+*/
+func FormatError(args ...any) error {
+	var msg Message
+	err := globalLogger.CheckArgs(args, &msg.Text, &msg.Context)
+	if err != nil {
+		Log(logLevelLoggerError, "Failed to create formatted error", C{"args": args})
+	}
+	msg.Caller = GetCallerInfo(1)
+
+	b, err := json.Marshal(msg)
+	if err != nil {
+		Log(logLevelLoggerError, "Failed to marshal formatted error", C{"args": args})
+	}
+	return errors.New(FormatedErrorKey + string(b))
 }
 
 /*
