@@ -93,6 +93,16 @@ func Log(level LogLevel, args ...any) {
 }
 
 /*
+LogSync is equivalent of Log function, but it runs in sync.
+*/
+func LogSync(level LogLevel, args ...any) {
+	readyCh := make(chan any)
+	globalLogger.Handle(args, level, readyCh)
+
+	<-readyCh
+}
+
+/*
 FormatError is a function that creates an error recognizable by the Logger,
 which, when passed to the Fatal or Error function, will be displayed as,
 as it was created.
