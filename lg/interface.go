@@ -53,6 +53,9 @@ and terminates the program with exit code 1,
 equivalent of os.Exit(1).
 */
 func Fatal(args ...any) {
+	// execute end tasks
+	globalLogger.EndTasks.Execute()
+
 	args = errorDelivery(args...)
 
 	readyCh := make(chan any)
@@ -68,6 +71,9 @@ Panic function outputs a log with the level LogLevelPanic,
 terminates the program with exit code 1 and print stack trace.
 */
 func Panic(args ...any) {
+	// execute end tasks
+	globalLogger.EndTasks.Execute()
+
 	args = errorDelivery(args...)
 
 	readyCh := make(chan any)
@@ -112,6 +118,13 @@ which notifies you that a function has been called.
 */
 func Invoked() {
 	globalLogger.Handle([]any{"Invoked"}, LogLevelDebug, nil)
+}
+
+/*
+End function returns structure instance EndTasks.
+*/
+func End() *EndTasks {
+	return globalLogger.EndTasks
 }
 
 func errorDelivery(args ...any) []any {

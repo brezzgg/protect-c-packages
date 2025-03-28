@@ -14,12 +14,14 @@ import (
 type Logger struct {
 	Pipes    []*Pipe
 	TypeConv TypeConverter
+	EndTasks *EndTasks
 }
 
 func NewLogger(pipes []*Pipe, typeConv TypeConverter) *Logger {
 	return &Logger{
 		Pipes:    pipes,
 		TypeConv: typeConv,
+		EndTasks: &EndTasks{},
 	}
 }
 

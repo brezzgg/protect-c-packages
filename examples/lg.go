@@ -3,6 +3,9 @@ package main
 import "github.com/brezzgg/protect-c-packages/lg"
 
 func main() {
+	// execute end tasks without Fatal or Panic functions
+	defer lg.End().Execute()
+
 	ExampleSetupLogger()
 	ExampleLogLevels()
 }
@@ -16,6 +19,14 @@ func ExampleSetupLogger() {
 			lg.NewConsoleWriter(),
 		),
 	)
+
+	lg.End().Append(func() {
+		// synchronous log output
+		lg.LogSync(lg.LogLevelDebug, "end tasks executed")
+
+		// is bad practice, because the logger will most likely fail to output the message in time
+		//lg.Debug("end tasks executed")
+	})
 
 	lg.Info("some log", lg.C{"with some": "context"})
 	// output in console: 2025/01/01 00:00:00+0  Info   main.ExampleSetupLogger:29  some log {"with some":"context"}
@@ -40,7 +51,7 @@ func ExampleLogLevels() {
 	)
 
 	// create custom log level
-	logLevelProd := lg.NewLogLevel("Prod", lg.ClrFgCyan)
+	logLevelProd := lg.NewLogLevel(lg.ClrFgCyan, "Prod")
 
 	// write log with custom log level
 	lg.Log(logLevelProd, str, ctx)
