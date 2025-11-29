@@ -1,14 +1,17 @@
 package lg
 
 import (
-	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/goccy/go-json"
 )
 
 type ConsoleSerializer struct {
 	DisableColors bool
+	cachedOffset  int
+	cachedTime    time.Time
 }
 
 func (c ConsoleSerializer) Serialize(m Message) string {
@@ -21,7 +24,7 @@ func (c ConsoleSerializer) Serialize(m Message) string {
 		}
 	}
 
-	_, offset := m.Time.Zone()
+	offset := c.getTimeOffset(time.Now())
 	offsetStr := strconv.Itoa(offset / 3600)
 	if !strings.HasPrefix(offsetStr, "-") {
 		offsetStr = "+" + offsetStr
@@ -43,13 +46,15 @@ func (c ConsoleSerializer) Serialize(m Message) string {
 		level = m.Level.Colorized() + levelSpaces
 	}
 
-	return fmt.Sprintf("%s  %s  %s  %s %s",
-		m.Time.UTC().Format("2006/01/02 15:04:05")+offsetStr,
-		level,
-		caller,
-		m.Text,
-		context,
-	)
+	return m.Time.UTC().Format("2006/01/02 15:04:05") + offsetStr + "  " + level + "  " + caller + "  " + m.Text + " " + context
+}
+
+func (c ConsoleSerializer) getTimeOffset(t time.Time) int {
+	if c.cachedTime.YearDay() != t.YearDay() {
+		_, c.cachedOffset = t.Zone()
+		c.cachedTime = t
+	}
+	return c.cachedOffset
 }
 
 type JsonSerializer struct{}

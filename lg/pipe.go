@@ -17,5 +17,5 @@ func NewPipe(ser Serializer, wri Writer) *Pipe {
 }
 
 func DefaultConsolePipe(disableColors bool) *Pipe {
-	return NewPipe(ConsoleSerializer{disableColors}, ConsoleWriter{})
+	return NewPipe(ConsoleSerializer{DisableColors: disableColors}, ConsoleWriter{})
 }

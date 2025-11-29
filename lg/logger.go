@@ -12,9 +12,10 @@ import (
 )
 
 type Logger struct {
-	Pipes    []*Pipe
-	TypeConv TypeConverter
-	EndTasks *EndTasks
+	Pipes     []*Pipe
+	TypeConv  TypeConverter
+	EndTasks  *EndTasks
+	pipeMutex sync.RWMutex
 }
 
 func NewLogger(pipes []*Pipe, typeConv TypeConverter) *Logger {
@@ -32,73 +33,73 @@ func DefaultConsoleLogger() *Logger {
 	)
 }
 
-var pipeMutex sync.Mutex
-
 func (l *Logger) Handle(m []any, level LogLevel, ch chan<- any) {
-	pipeMutex.Lock()
-	go func(m []any, level LogLevel, cal Caller, time time.Time) {
-		defer close(ch)
+	mCopy := make([]any, len(m))
+	copy(mCopy, m)
+
+	caller := GetCallerInfo(2)
+	timestamp := time.Now()
+
+	go func() {
+		defer func() {
+			if ch != nil {
+				close(ch)
+			}
+		}()
+
 		var msg Message
 
-		// try to find formatted error in args
-		for i, item := range m {
+		filtered := make([]any, 0, len(mCopy))
+		for _, item := range mCopy {
 			if e, ok := item.(error); ok && strings.HasPrefix(e.Error(), FormatedErrorKey) {
 				formStr := strings.TrimPrefix(e.Error(), FormatedErrorKey)
-				err := json.Unmarshal([]byte(formStr), &msg)
-				if err == nil {
-					// mark the level as formatted error
+				if err := json.Unmarshal([]byte(formStr), &msg); err == nil {
 					msg.Level = level.AppendLevels("(formatted)")
 
-					// put all formatted context to key 'formatted'
 					if msg.Context != nil {
 						temp := msg.Context
-						msg.Context = make(C)
-						msg.Context["formatted"] = temp
+						msg.Context = C{"formatted": temp}
 					}
-
-					// remove formatted error argument
-					m = append(m[:i], m[i+1:]...)
+					continue
 				}
 			}
+			filtered = append(filtered, item)
 		}
 
-		// handle arguments
-		err := l.CheckArgs(m, &msg.Text, &msg.Context)
-		if err != nil {
+		if err := l.CheckArgs(filtered, &msg.Text, &msg.Context); err != nil {
 			msg = Message{
-				Caller:  cal,
+				Caller:  caller,
 				Level:   logLevelLoggerError,
 				Text:    "Failed to parse message context",
 				Context: C{"parserError": err.Error()},
+				Time:    timestamp,
 			}
 		} else {
 			if msg.Caller.Equal(Caller{}) {
-				msg.Caller = cal
+				msg.Caller = caller
 			}
 			if msg.Level.Equal(LogLevel{}) {
 				msg.Level = level
 			}
+			msg.Time = timestamp
 		}
 
-		msg.Time = time
+		l.pipeMutex.RLock()
+		pipes := make([]*Pipe, len(l.Pipes))
+		copy(pipes, l.Pipes)
+		l.pipeMutex.RUnlock()
 
-		var wg sync.WaitGroup
-		wg.Add(len(l.Pipes))
+		if len(pipes) == 0 {
+			return
+		}
 
-		for _, pipe := range l.Pipes {
-			go func(pipe *Pipe) {
-				pipe.Handle(msg)
-				wg.Done()
+		for _, pipe := range pipes {
+			go func(p *Pipe) {
+				p.Handle(msg)
 			}(pipe)
 		}
-
-		wg.Wait()
-		pipeMutex.Unlock()
-
-		ch <- 1
-	}(m, level, GetCallerInfo(2), time.Now())
+	}()
 }
-
 func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
 	appendBodyFunc := func(body string) {
 		if len(*msgBody) > 0 {

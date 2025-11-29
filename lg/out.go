@@ -1,10 +1,11 @@
 package lg
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
+	"slices"
+	"strconv"
 	"strings"
+
+	"encoding/json"
 )
 
 type LogLevel struct {
@@ -27,11 +28,21 @@ func (l LogLevel) MarshalJSON() ([]byte, error) {
 }
 
 func (l LogLevel) Colorize(color string) string {
-	return fmt.Sprintf("%s%s%s", color, l.Formatter(), ClrReset)
+	var sb strings.Builder
+	sb.Grow(len(color) + len(ClrReset) + 50)
+	sb.WriteString(color)
+	sb.WriteString(l.Formatter())
+	sb.WriteString(ClrReset)
+	return sb.String()
 }
 
 func (l LogLevel) Colorized() string {
-	return fmt.Sprintf("%s%s%s", l.color, l.Formatter(), ClrReset)
+	var sb strings.Builder
+	sb.Grow(len(l.color) + len(ClrReset) + 50)
+	sb.WriteString(l.color)
+	sb.WriteString(l.Formatter())
+	sb.WriteString(ClrReset)
+	return sb.String()
 }
 
 func (l LogLevel) Standard() string {
@@ -48,16 +59,7 @@ func (l LogLevel) Formatter() string {
 }
 
 func (l LogLevel) Equal(other LogLevel) bool {
-	curJson, err := json.Marshal(l)
-	if err != nil {
-		return false
-	}
-	otherJson, err := json.Marshal(other)
-	if err != nil {
-		return false
-	}
-
-	return bytes.Equal(curJson, otherJson)
+	return l.color == other.color && slices.Equal(l.Levels, other.Levels)
 }
 
 type Caller struct {
@@ -68,11 +70,21 @@ type Caller struct {
 }
 
 func (c Caller) Colorize(color string) string {
-	return fmt.Sprintf("%s%s%s", color, c.formatter(), ClrReset)
+	var sb strings.Builder
+	sb.Grow(len(color) + len(ClrReset) + 50)
+	sb.WriteString(color)
+	sb.WriteString(c.formatter())
+	sb.WriteString(ClrReset)
+	return sb.String()
 }
 
 func (c Caller) Colorized() string {
-	return fmt.Sprintf("%s%s%s", c.color, c.formatter(), ClrReset)
+	var sb strings.Builder
+	sb.Grow(len(c.color) + len(ClrReset) + 50)
+	sb.WriteString(c.color)
+	sb.WriteString(c.formatter())
+	sb.WriteString(ClrReset)
+	return sb.String()
 }
 
 func (c Caller) Standard() string {
@@ -80,17 +92,19 @@ func (c Caller) Standard() string {
 }
 
 func (c Caller) formatter() string {
-	return fmt.Sprintf("%s.%s:%d", c.File, c.Method, c.Line)
+	var sb strings.Builder
+	sb.Grow(len(c.File) + len(c.Method))
+	sb.WriteString(c.File)
+	sb.WriteString(".")
+	sb.WriteString(c.Method)
+	sb.WriteString(":")
+	sb.WriteString(strconv.Itoa(c.Line))
+	return sb.String()
 }
 
 func (c Caller) Equal(other Caller) bool {
-	curJson, err := json.Marshal(c)
-	if err != nil {
-		return false
-	}
-	otherJson, err := json.Marshal(other)
-	if err != nil {
-		return false
-	}
-	return bytes.Equal(curJson, otherJson)
+	return c.Line == other.Line &&
+		c.Method == other.Method &&
+		c.File == other.File &&
+		c.color == other.color
 }
