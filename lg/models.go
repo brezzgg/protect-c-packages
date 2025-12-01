@@ -58,6 +58,7 @@ type Serializer interface {
 
 type Writer interface {
 	Write(Message string) error
+	Flush()
 }
 
 type ColorizedOut interface {

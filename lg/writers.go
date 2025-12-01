@@ -14,13 +14,14 @@ func NewConsoleWriter() *ConsoleWriter {
 }
 
 func (c ConsoleWriter) Write(str string) error {
-	if _, err := os.Stdout.Write([]byte(str + "\n")); err != nil {
-		return err
-	}
-	if err := os.Stdout.Sync(); err != nil {
+	if _, err := os.Stdout.WriteString(str); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (c ConsoleWriter) Flush() {
+	_ = os.Stdout.Sync()
 }
 
 type FileWriter struct {
@@ -33,11 +34,15 @@ type FileWriter struct {
 
 func NewFileWriter(filename string) *FileWriter {
 	return &FileWriter{
-		name:      filename,
 		bufSize:   1024,
+		name:      filename,
 		buf:       new([]byte),
 		lastWrite: new(time.Time),
 	}
+}
+
+func (f FileWriter) SetBufferSize(size int) {
+	f.bufSize = size
 }
 
 func (f FileWriter) Write(str string) error {
@@ -76,6 +81,11 @@ func (f FileWriter) Write(str string) error {
 	*f.buf = append(*f.buf, str...)
 
 	return nil
+}
+
+func (f FileWriter) Flush() {
+	_ = f.Write("")
+	_ = f.file.Sync()
 }
 
 func (f FileWriter) writeBuf() error {
