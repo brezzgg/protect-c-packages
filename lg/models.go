@@ -38,16 +38,6 @@ It is used to add context to logs in a convenient way.
 */
 type C map[string]any
 
-/*
-E is an alias that is equivalent to struct{Err error}.
-This is used to explicitly specify the error in the context of the log,
-and to make sure that if the value is nil,
-the log will display {"error": "nil"}.
-*/
-type E struct {
-	Err error
-}
-
 type TypeConverter interface {
 	ConvAndPush(item any, push func(key string, val any))
 }

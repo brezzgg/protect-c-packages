@@ -1,29 +1,45 @@
 package lg
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
 	"unicode"
 )
 
 type Logger struct {
-	Pipes     []*Pipe
-	TypeConv  TypeConverter
-	EndTasks  *EndTasks
-	pipeMutex sync.RWMutex
+	Pipes    []*Pipe
+	TypeConv TypeConverter
+	EndTasks *EndTasks
+
+	queue  chan Message
+	wg     sync.WaitGroup
+	stop   chan struct{}
+	closed atomic.Bool
 }
 
 func NewLogger(pipes []*Pipe, typeConv TypeConverter) *Logger {
-	return &Logger{
+	l := &Logger{
 		Pipes:    pipes,
 		TypeConv: typeConv,
 		EndTasks: &EndTasks{},
+		queue:    make(chan Message, 8192),
+		stop:     make(chan struct{}),
 	}
+
+	l.wg.Add(1)
+	go l.worker()
+
+	go l.watchSignals()
+
+	return l
 }
 
 func DefaultConsoleLogger() *Logger {
@@ -33,73 +49,81 @@ func DefaultConsoleLogger() *Logger {
 	)
 }
 
-func (l *Logger) Handle(m []any, level LogLevel, ch chan<- any) {
-	mCopy := make([]any, len(m))
-	copy(mCopy, m)
+func (l *Logger) Close() {
+	if !l.closed.Swap(true) {
+		close(l.queue)
+		close(l.stop)
+		l.wg.Wait()
+		for _, pipe := range l.Pipes {
+			pipe.Wri.Flush()
+		}
+	}
+}
 
-	caller := GetCallerInfo(2)
-	timestamp := time.Now()
-
-	go func() {
-		defer func() {
-			if ch != nil {
-				close(ch)
-			}
-		}()
-
-		var msg Message
-
-		filtered := make([]any, 0, len(mCopy))
-		for _, item := range mCopy {
-			if e, ok := item.(error); ok && strings.HasPrefix(e.Error(), FormatedErrorKey) {
-				formStr := strings.TrimPrefix(e.Error(), FormatedErrorKey)
-				if err := json.Unmarshal([]byte(formStr), &msg); err == nil {
-					msg.Level = level.AppendLevels("(formatted)")
-
-					if msg.Context != nil {
-						temp := msg.Context
-						msg.Context = C{"formatted": temp}
-					}
+func (l *Logger) worker() {
+WorkerLoop:
+	for {
+		select {
+		case <-l.stop:
+			for msg := range l.queue {
+				if msg.Text == "" {
 					continue
 				}
+				for _, p := range l.Pipes {
+					p.Handle(msg)
+				}
 			}
-			filtered = append(filtered, item)
-		}
+			break WorkerLoop
 
-		if err := l.CheckArgs(filtered, &msg.Text, &msg.Context); err != nil {
-			msg = Message{
-				Caller:  caller,
-				Level:   logLevelLoggerError,
-				Text:    "Failed to parse message context",
-				Context: C{"parserError": err.Error()},
-				Time:    timestamp,
+		case msg := <-l.queue:
+			if msg.Text == "" {
+				continue
 			}
-		} else {
-			if msg.Caller.Equal(Caller{}) {
-				msg.Caller = caller
-			}
-			if msg.Level.Equal(LogLevel{}) {
-				msg.Level = level
-			}
-			msg.Time = timestamp
-		}
-
-		l.pipeMutex.RLock()
-		pipes := make([]*Pipe, len(l.Pipes))
-		copy(pipes, l.Pipes)
-		l.pipeMutex.RUnlock()
-
-		if len(pipes) == 0 {
-			return
-		}
-
-		for _, pipe := range pipes {
-			go func(p *Pipe) {
+			for _, p := range l.Pipes {
 				p.Handle(msg)
-			}(pipe)
+			}
 		}
-	}()
+	}
+
+	l.wg.Done()
 }
+
+func (l *Logger) watchSignals() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+
+	<-sigCh
+	l.Close()
+}
+
+func (l *Logger) Handle(args []any, level LogLevel) {
+	if l.closed.Load() {
+		return
+	}
+	msg := l.buildMessage(args, level)
+	l.queue <- msg
+}
+
+func (l *Logger) buildMessage(m []any, level LogLevel) Message {
+	msg := Message{
+		Caller: GetCallerInfo(3),
+		Level:  level,
+		Time:   time.Now(),
+	}
+
+	if err := l.CheckArgs(m, &msg.Text, &msg.Context); err != nil {
+		msg = Message{
+			Caller:  msg.Caller,
+			Level:   logLevelLoggerError,
+			Text:    "Failed to parse message context",
+			Context: C{"parserError": err.Error()},
+			Time:    msg.Time,
+		}
+	}
+
+	return msg
+}
+
 func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
 	appendBodyFunc := func(body string) {
 		if len(*msgBody) > 0 {

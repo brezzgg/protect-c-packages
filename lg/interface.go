@@ -1,8 +1,6 @@
 package lg
 
 import (
-	"encoding/json"
-	"errors"
 	"os"
 	"runtime/debug"
 )
@@ -22,29 +20,28 @@ func SetCustomPipes(pipes ...*Pipe) {
 Debug function outputs a log with the level LogLevelDebug.
 */
 func Debug(args ...any) {
-	globalLogger.Handle(args, LogLevelDebug, nil)
+	globalLogger.Handle(args, LogLevelDebug)
 }
 
 /*
 Info function outputs a log with the level LogLevelInfo.
 */
 func Info(args ...any) {
-	globalLogger.Handle(args, LogLevelInfo, nil)
+	globalLogger.Handle(args, LogLevelInfo)
 }
 
 /*
 Warn function outputs a log with the level LogLevelWarn.
 */
 func Warn(args ...any) {
-	globalLogger.Handle(args, LogLevelWarn, nil)
+	globalLogger.Handle(args, LogLevelWarn)
 }
 
 /*
 Error function outputs a log with the level LogLevelError.
 */
 func Error(args ...any) {
-	args = errorDelivery(args...)
-	globalLogger.Handle(args, LogLevelError, nil)
+	globalLogger.Handle(args, LogLevelError)
 }
 
 /*
@@ -56,12 +53,10 @@ func Fatal(args ...any) {
 	// execute end tasks
 	globalLogger.EndTasks.Execute()
 
-	args = errorDelivery(args...)
+	globalLogger.Handle(args, LogLevelFatal)
 
-	readyCh := make(chan any)
-	globalLogger.Handle(args, LogLevelFatal, readyCh)
+	globalLogger.Close()
 
-	<-readyCh
 	// exit with code 1
 	os.Exit(1)
 }
@@ -74,52 +69,40 @@ func Panic(args ...any) {
 	// execute end tasks
 	globalLogger.EndTasks.Execute()
 
-	args = errorDelivery(args...)
+	globalLogger.Handle(args, LogLevelPanic)
 
-	readyCh := make(chan any)
-	globalLogger.Handle(args, LogLevelPanic, readyCh)
+	globalLogger.Close()
 
-	<-readyCh
 	// print stack trace and exit with code 1
 	debug.PrintStack()
 	os.Exit(1)
 }
 
 /*
+Exit function terminate the program with your exit code
+*/
+func Exit(code int) {
+	// execute end tasks
+	globalLogger.EndTasks.Execute()
+
+	globalLogger.Close()
+
+	// exit
+	os.Exit(code)
+}
+
+/*
+Close function dispose logger
+*/
+func Close() {
+	globalLogger.Close()
+}
+
+/*
 Log function outputs a log with your custom LogLevel.
 */
 func Log(level LogLevel, args ...any) {
-	globalLogger.Handle(args, level, nil)
-}
-
-/*
-LogSync is equivalent of Log function, but it runs in sync.
-*/
-func LogSync(level LogLevel, args ...any) {
-	readyCh := make(chan any)
-	globalLogger.Handle(args, level, readyCh)
-
-	<-readyCh
-}
-
-/*
-FormatError is a function that creates an error recognizable by the Logger,
-which, when passed to the Fatal or Error function, will be displayed as,
-as it was created.
-*/
-func FormatError(args ...any) error {
-	var msg Message
-	err := globalLogger.CheckArgs(args, &msg.Text, &msg.Context)
-	if err != nil {
-		Log(logLevelLoggerError, "Failed to create formatted error", C{"args": args})
-	}
-	msg.Caller = GetCallerInfo(1)
-
-	b, err := json.Marshal(msg)
-	if err != nil {
-		Log(logLevelLoggerError, "Failed to marshal formatted error", C{"args": args})
-	}
-	return errors.New(FormatedErrorKey + string(b))
+	globalLogger.Handle(args, level)
 }
 
 /*
@@ -127,7 +110,7 @@ Invoked function outputs a log with the level LogLevelDebug,
 which notifies you that a function has been called.
 */
 func Invoked() {
-	globalLogger.Handle([]any{"Invoked"}, LogLevelDebug, nil)
+	globalLogger.Handle([]any{"Invoked"}, LogLevelDebug)
 }
 
 /*
@@ -135,12 +118,4 @@ End function returns structure instance EndTasks.
 */
 func End() *EndTasks {
 	return globalLogger.EndTasks
-}
-
-func errorDelivery(args ...any) []any {
-	if err, ok := args[0].(error); ok {
-		args[0] = "Undescribed error: "
-		args = append(args, err)
-	}
-	return args
 }
