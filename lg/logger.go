@@ -130,13 +130,21 @@ func (l *Logger) Handle(args []any, level LogLevel) {
 	if l.closed.Load() {
 		return
 	}
-	msg := l.buildMessage(args, level)
+
+	// TODO: fix
+	offset := 0
+	caller := GetCallerInfo(2)
+	if strings.HasPrefix(caller.File, "github.com/brezzgg/go-packages/lg") {
+		offset = 1
+	}
+
+	msg := l.buildMessage(args, level, offset)
 	l.queue <- msg
 }
 
-func (l *Logger) buildMessage(m []any, level LogLevel) Message {
+func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message {
 	msg := Message{
-		Caller: GetCallerInfo(3),
+		Caller: GetCallerInfo(3 + callerOffset),
 		Level:  level,
 		Time:   time.Now(),
 	}
