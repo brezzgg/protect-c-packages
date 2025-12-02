@@ -8,47 +8,59 @@ import (
 )
 
 func main() {
-	// execute end tasks without Fatal or Panic functions
-	defer lg.End().Execute()
+	// execute end tasks without Fatal, Panic or Exit functions
+	defer lg.GlobalLogger.End().Execute()
 
 	ExampleSetupLogger()
 	ExampleLogLevels()
 }
 
 func ExampleSetupLogger() {
-	lg.SetCustomPipes(
-		lg.NewPipe(
-			lg.ConsoleSerializer{
-				DisableColors: false,
-			},
-			lg.NewConsoleWriter(),
+	lg.GlobalLogger = lg.NewLogger(
+		lg.WithPipe(
+			lg.NewPipe(
+				lg.WithSerializer(lg.NewConsoleSerializer()),
+				lg.WithWriter(lg.NewConsoleWriter()),
+			),
 		),
 	)
-
-	lg.End().Append(func() {
-		// synchronous log output
-		lg.LogSync(lg.LogLevelDebug, "end tasks executed")
-
-		// is bad practice, because the logger will most likely fail to output the message in time
-		//lg.Debug("end tasks executed")
-	})
 
 	lg.Info("some log", lg.C{"with some": "context"})
 	// output in console: 2025/01/01 00:00:00+0  Info   main.ExampleSetupLogger:29  some log {"with some":"context"}
 
-	lg.SetCustomPipes(
-		lg.NewPipe(
-			lg.JsonSerializer{},
-			lg.NewFileWriter("log.json"),
+	logger := lg.NewLogger(
+		lg.WithPipe(
+			lg.NewPipe(
+				lg.WithSerializer(lg.NewJSONSerializer()),
+				lg.WithWriter(lg.NewFileWriter("log.json")),
+			),
 		),
 	)
 
-	lg.Info("some log", lg.C{"with some": "context"})
+	logger.End().Append(func() {
+		//lg.Debug("end tasks executed")
+		// is bad practice, because the logger will most likely fail to output the message in time
+
+		b, _ := os.ReadFile("log.json")
+		fmt.Println(
+			// trim spaces
+			lg.T(
+				// sprintf equivalent
+				lg.F(
+					"log.json: %s", string(b),
+				),
+			),
+		)
+		_ = os.Remove("log.json")
+	})
+
+	logger.Info("some log", lg.C{"with some": "context"})
 	// output in log.json: {"time":"2025-01-01T00:00:00.0000000+00:00","caller":{"method":"ExampleSetupLogger","file":"main","line":20},"level":"info","msg":"some log","ctx":{"with some":"context"}}
 }
 
 func ExampleLogLevels() {
-	lg.SetCustomPipes(lg.DefaultConsolePipe(false))
+	lg.GlobalLogger.Close()
+	lg.GlobalLogger = lg.NewLogger()
 
 	var (
 		str = "Hello world"
