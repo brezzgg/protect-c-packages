@@ -7,45 +7,40 @@ import (
 	"time"
 )
 
-type ConsoleWriter struct{}
+// TODO: Rework
 
-func NewConsoleWriter() *ConsoleWriter {
-	return &ConsoleWriter{}
-}
-
-func (c ConsoleWriter) Write(str string) error {
-	if _, err := os.Stdout.WriteString(str); err != nil {
-		return err
+type (
+	fileWriter struct {
+		name      string
+		file      *os.File
+		buf       *[]byte
+		bufSize   int
+		lastWrite *time.Time
 	}
-	return nil
-}
 
-func (c ConsoleWriter) Flush() {
-	_ = os.Stdout.Sync()
-}
+	FileWriterOption func(*fileWriter)
+)
 
-type FileWriter struct {
-	name      string
-	file      *os.File
-	buf       *[]byte
-	bufSize   int
-	lastWrite *time.Time
-}
-
-func NewFileWriter(filename string) *FileWriter {
-	return &FileWriter{
+func NewFileWriter(filename string, opts ...FileWriterOption) *fileWriter {
+	f := &fileWriter{
 		bufSize:   1024,
 		name:      filename,
 		buf:       new([]byte),
 		lastWrite: new(time.Time),
 	}
+	for _, opt := range opts {
+		opt(f)
+	}
+	return f
 }
 
-func (f FileWriter) SetBufferSize(size int) {
-	f.bufSize = size
+func WithCustomBufferSize(size int) FileWriterOption {
+	return func(w *fileWriter) {
+		w.bufSize = size
+	}
 }
 
-func (f FileWriter) Write(str string) error {
+func (f *fileWriter) Write(str string) error {
 	defer func() { *f.lastWrite = time.Now() }()
 	str = str + "\n"
 
@@ -83,12 +78,17 @@ func (f FileWriter) Write(str string) error {
 	return nil
 }
 
-func (f FileWriter) Flush() {
-	_ = f.Write("")
+func (f *fileWriter) Flush() {
 	_ = f.file.Sync()
 }
 
-func (f FileWriter) writeBuf() error {
+func (f *fileWriter) Close() {
+	_ = f.Write("")
+	f.Flush()
+	_ = f.file.Close()
+}
+
+func (f *fileWriter) writeBuf() error {
 	if _, err := f.file.Write(*f.buf); err != nil {
 		return errors.New(fmt.Sprintf("failed to write to file '%s': %s", f.name, err))
 	}
@@ -96,7 +96,7 @@ func (f FileWriter) writeBuf() error {
 	return nil
 }
 
-func (f FileWriter) writeStr(str string) error {
+func (f *fileWriter) writeStr(str string) error {
 	if _, err := f.file.WriteString(str); err != nil {
 		return errors.New(fmt.Sprintf("failed to write to file '%s': %s", f.name, err))
 	}

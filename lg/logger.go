@@ -14,24 +14,36 @@ import (
 	"unicode"
 )
 
-type Logger struct {
-	Pipes    []*Pipe
-	TypeConv TypeConverter
-	EndTasks *EndTasks
+var endTasks = &EndTasks{}
 
-	queue  chan Message
-	wg     sync.WaitGroup
-	stop   chan struct{}
-	closed atomic.Bool
-}
+type (
+	Logger struct {
+		typeConv TypeConverter
+		pipes    []*Pipe
 
-func NewLogger(pipes []*Pipe, typeConv TypeConverter) *Logger {
+		queue  chan Message
+		wg     sync.WaitGroup
+		stop   chan struct{}
+		closed atomic.Bool
+	}
+
+	LoggerOption func(*Logger)
+)
+
+func NewLogger(opts ...LoggerOption) *Logger {
 	l := &Logger{
-		Pipes:    pipes,
-		TypeConv: typeConv,
-		EndTasks: &EndTasks{},
+		pipes:    make([]*Pipe, 0, 1),
+		typeConv: NewDefaultTypeConverter(),
 		queue:    make(chan Message, 8192),
 		stop:     make(chan struct{}),
+	}
+
+	for _, opt := range opts {
+		opt(l)
+	}
+
+	if len(l.pipes) == 0 {
+		l.pipes = append(l.pipes, NewPipe())
 	}
 
 	l.wg.Add(1)
@@ -39,14 +51,33 @@ func NewLogger(pipes []*Pipe, typeConv TypeConverter) *Logger {
 
 	go l.watchSignals()
 
+	l.closed.Store(false)
+
 	return l
 }
 
-func DefaultConsoleLogger() *Logger {
-	return NewLogger(
-		[]*Pipe{DefaultConsolePipe(false)},
-		DefaultTypeConverter{},
-	)
+func WithPipe(pipe *Pipe) LoggerOption {
+	return func(l *Logger) {
+		l.pipes = append(l.pipes, pipe)
+	}
+}
+
+func WithPipes(pipes ...*Pipe) LoggerOption {
+	return func(l *Logger) {
+		l.pipes = append(l.pipes, pipes...)
+	}
+}
+
+func WithCustomTypeConverter(c TypeConverter) LoggerOption {
+	return func(l *Logger) {
+		l.typeConv = c
+	}
+}
+
+func WithQueueSize(size int) LoggerOption {
+	return func(l *Logger) {
+		l.queue = make(chan Message, size)
+	}
 }
 
 func (l *Logger) Close() {
@@ -54,8 +85,8 @@ func (l *Logger) Close() {
 		close(l.queue)
 		close(l.stop)
 		l.wg.Wait()
-		for _, pipe := range l.Pipes {
-			pipe.Wri.Flush()
+		for _, pipe := range l.pipes {
+			pipe.Close()
 		}
 	}
 }
@@ -69,7 +100,7 @@ WorkerLoop:
 				if msg.Text == "" {
 					continue
 				}
-				for _, p := range l.Pipes {
+				for _, p := range l.pipes {
 					p.Handle(msg)
 				}
 			}
@@ -79,7 +110,7 @@ WorkerLoop:
 			if msg.Text == "" {
 				continue
 			}
-			for _, p := range l.Pipes {
+			for _, p := range l.pipes {
 				p.Handle(msg)
 			}
 		}
@@ -163,7 +194,7 @@ func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
 		if itemNum == 0 {
 			continue
 		}
-		l.TypeConv.ConvAndPush(item, func(k string, v any) {
+		l.typeConv.ConvAndPush(item, func(k string, v any) {
 			(*msgCtx)[l.findKey(k, *msgCtx)] = v
 		})
 	}

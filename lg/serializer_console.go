@@ -8,13 +8,31 @@ import (
 	"github.com/goccy/go-json"
 )
 
-type ConsoleSerializer struct {
-	DisableColors bool
-	cachedOffset  int
-	cachedTime    time.Time
+type (
+	consoleSerializer struct {
+		disableColors bool
+		cachedOffset  int
+		cachedTime    time.Time
+	}
+
+	ConsoleSerializerOption func(*consoleSerializer)
+)
+
+func NewConsoleSerializer(opts ...ConsoleSerializerOption) *consoleSerializer {
+	s := &consoleSerializer{}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
-func (c ConsoleSerializer) Serialize(m Message) string {
+func WithDisabledColors() ConsoleSerializerOption {
+	return func(s *consoleSerializer) {
+		s.disableColors = true
+	}
+}
+
+func (c *consoleSerializer) Serialize(m Message) string {
 	context := ""
 	if m.Context != nil {
 		b, err := json.Marshal(m.Context)
@@ -38,7 +56,7 @@ func (c ConsoleSerializer) Serialize(m Message) string {
 			levelSpaces += " "
 		}
 	}
-	if c.DisableColors {
+	if c.disableColors {
 		caller = m.Caller.Standard()
 		level = m.Level.Standard() + levelSpaces
 	} else {
@@ -49,17 +67,10 @@ func (c ConsoleSerializer) Serialize(m Message) string {
 	return m.Time.UTC().Format("2006/01/02 15:04:05") + offsetStr + "  " + level + "  " + caller + "  " + m.Text + " " + context
 }
 
-func (c ConsoleSerializer) getTimeOffset(t time.Time) int {
+func (c *consoleSerializer) getTimeOffset(t time.Time) int {
 	if c.cachedTime.YearDay() != t.YearDay() {
 		_, c.cachedOffset = t.Zone()
 		c.cachedTime = t
 	}
 	return c.cachedOffset
-}
-
-type JsonSerializer struct{}
-
-func (j JsonSerializer) Serialize(m Message) string {
-	b, _ := json.Marshal(m)
-	return string(b)
 }
