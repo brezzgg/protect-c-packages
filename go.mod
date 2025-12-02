@@ -1,4 +1,4 @@
-module github.com/brezzgg/protect-c-packages
+module github.com/brezzgg/go-packages
 
 go 1.24.1
 

@@ -1,6 +1,11 @@
 package main
 
-import "github.com/brezzgg/protect-c-packages/lg"
+import (
+	"fmt"
+	"os"
+
+	"github.com/brezzgg/go-packages/lg"
+)
 
 func main() {
 	// execute end tasks without Fatal or Panic functions
