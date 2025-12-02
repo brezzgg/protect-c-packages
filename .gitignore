@@ -2,6 +2,7 @@
 test.go
 
 # idea igonres
+.idea
 /shelf/
 /workspace.xml
 /httpRequests/
