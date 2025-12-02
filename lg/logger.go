@@ -48,7 +48,6 @@ func NewLogger(opts ...LoggerOption) *Logger {
 
 	l.wg.Add(1)
 	go l.worker()
-
 	go l.watchSignals()
 
 	l.closed.Store(false)

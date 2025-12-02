@@ -1,6 +1,8 @@
 package lg
 
-import "time"
+import (
+	"time"
+)
 
 type Message struct {
 	Time    time.Time `json:"time"`
