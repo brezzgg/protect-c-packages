@@ -21,10 +21,11 @@ type (
 		typeConv TypeConverter
 		pipes    []*Pipe
 
-		queue  chan Message
-		wg     sync.WaitGroup
-		stop   chan struct{}
-		closed atomic.Bool
+		queue     chan Message
+		wg        sync.WaitGroup
+		stop      chan struct{}
+		closed    atomic.Bool
+		levelOpts []LogLevelOption
 	}
 
 	LoggerOption func(*Logger)
@@ -76,6 +77,12 @@ func WithCustomTypeConverter(c TypeConverter) LoggerOption {
 func WithQueueSize(size int) LoggerOption {
 	return func(l *Logger) {
 		l.queue = make(chan Message, size)
+	}
+}
+
+func WithConstantLevelOptions(opts ...LogLevelOption) LoggerOption {
+	return func(l *Logger) {
+		l.levelOpts = opts
 	}
 }
 
@@ -143,6 +150,8 @@ func (l *Logger) Handle(args []any, level LogLevel) {
 }
 
 func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message {
+	level.opts = append(l.levelOpts, level.opts...)
+
 	msg := Message{
 		Caller: GetCallerInfo(3 + callerOffset),
 		Level:  level,

@@ -11,6 +11,18 @@ var (
 )
 
 const (
+	LevelOptionDisableCaller     LogLevelOption = "caller_disable"
+	LevelOptionCallerOnlyFunc    LogLevelOption = "caller_only_func"
+	LevelOptionCallerOnlyFile    LogLevelOption = "caller_only_file"
+	LevelOptionCallerDisableFunc LogLevelOption = "caller_disable_func"
+	LevelOptionCallerDisableFile LogLevelOption = "caller_disable_file"
+	LevelOptionCallerDisableLine LogLevelOption = "caller_disable_line"
+
+	LevelOptionDisableTime       LogLevelOption = "time_disable"
+	LevelOptionTimeDisableOffset LogLevelOption = "time_disable_offset"
+)
+
+const (
 	ClrReset = "\033[0;0m"
 
 	ClrFgRed    = "\033[0;91m"

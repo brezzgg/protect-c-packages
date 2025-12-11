@@ -42,12 +42,6 @@ func (c *consoleSerializer) Serialize(m Message) string {
 		}
 	}
 
-	offset := c.getTimeOffset(time.Now())
-	offsetStr := strconv.Itoa(offset / 3600)
-	if !strings.HasPrefix(offsetStr, "-") {
-		offsetStr = "+" + offsetStr
-	}
-
 	var caller, level string
 	levelSpaces := ""
 
@@ -57,14 +51,64 @@ func (c *consoleSerializer) Serialize(m Message) string {
 		}
 	}
 	if c.disableColors {
-		caller = m.Caller.Standard()
-		level = m.Level.Standard() + levelSpaces
+		caller = c.getCaller(m)
+		level = m.Level.Formatter() + levelSpaces
 	} else {
-		caller = m.Caller.Colorize(ClrFgCyan)
-		level = m.Level.Colorized() + levelSpaces
+		caller = ColorizeString(c.getCaller(m), ClrFgCyan)
+		level = ColorizeString(m.Level.Formatter(), m.Level.Color()) + levelSpaces
 	}
 
-	return m.Time.UTC().Format("2006/01/02 15:04:05") + offsetStr + "  " + level + "  " + caller + "  " + m.Text + " " + context
+	return c.getTime(m) + level + "  " + caller + m.Text + " " + context
+}
+
+func (c *consoleSerializer) getTime(m Message) string {
+	const layout = "2006/01/02 15:04:05"
+
+	res, ok := m.Level.HandleOptions(func(opt LogLevelOption) (string, bool) {
+		switch opt {
+		case LevelOptionDisableTime:
+			return "", true
+		case LevelOptionTimeDisableOffset:
+			return m.Time.UTC().Format(layout) + "  ", true
+		}
+		return "", false
+	})
+
+	if ok {
+		return res
+	}
+
+	offset := c.getTimeOffset(time.Now())
+	offsetStr := strconv.Itoa(offset / 3600)
+	if !strings.HasPrefix(offsetStr, "-") {
+		offsetStr = "+" + offsetStr
+	}
+	return m.Time.UTC().Format("2006/01/02 15:04:05") + offsetStr + "  "
+}
+
+func (c *consoleSerializer) getCaller(m Message) string {
+	res, ok := m.Level.HandleOptions(func(opt LogLevelOption) (string, bool) {
+		switch opt {
+		case LevelOptionDisableCaller:
+			return "", true
+		case LevelOptionCallerOnlyFunc:
+			return m.Caller.Method + "()  ", true
+		case LevelOptionCallerOnlyFile:
+			return m.Caller.File + "  ", true
+		case LevelOptionCallerDisableFunc:
+			return m.Caller.File + ":" + strconv.Itoa(m.Caller.Line) + "  ", true
+		case LevelOptionCallerDisableFile:
+			return m.Caller.Method + "():" + strconv.Itoa(m.Caller.Line) + "  ", true
+		case LevelOptionCallerDisableLine:
+			return m.Caller.File + "." + m.Caller.Method + "()  ", true
+		}
+		return "", false
+	})
+
+	if ok {
+		return res
+	}
+	return m.Caller.Formatter() + "  "
 }
 
 func (c *consoleSerializer) getTimeOffset(t time.Time) int {

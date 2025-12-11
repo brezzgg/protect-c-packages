@@ -1,97 +1,66 @@
 package lg
 
 import (
-	"slices"
 	"strconv"
 	"strings"
 
-	"encoding/json"
+	"github.com/goccy/go-json"
 )
 
-type LogLevel struct {
-	Levels []string
-	color  string
-}
-
-func NewLogLevel(asciiClr string, levels ...string) LogLevel {
-	for i := range levels {
-		levels[i] = strings.TrimSpace(levels[i])
+type (
+	LogLevel struct {
+		Level string
+		color string
+		opts  []LogLevelOption
 	}
+	LogLevelOption string
+)
+
+func NewLogLevel(asciiClr string, level string, opts ...LogLevelOption) LogLevel {
 	return LogLevel{
-		Levels: levels,
-		color:  asciiClr,
+		Level: level,
+		color: asciiClr,
+		opts:  opts,
 	}
 }
 
 func (l LogLevel) MarshalJSON() ([]byte, error) {
-	return json.Marshal(l.Levels)
+	return json.Marshal(l.Level)
 }
 
-func (l LogLevel) Colorize(color string) string {
-	var sb strings.Builder
-	sb.Grow(len(color) + len(ClrReset) + 50)
-	sb.WriteString(color)
-	sb.WriteString(l.Formatter())
-	sb.WriteString(ClrReset)
-	return sb.String()
-}
-
-func (l LogLevel) Colorized() string {
-	var sb strings.Builder
-	sb.Grow(len(l.color) + len(ClrReset) + 50)
-	sb.WriteString(l.color)
-	sb.WriteString(l.Formatter())
-	sb.WriteString(ClrReset)
-	return sb.String()
-}
-
-func (l LogLevel) Standard() string {
-	return l.Formatter()
-}
-
-func (l LogLevel) AppendLevels(levels ...string) LogLevel {
-	l.Levels = append(l.Levels, levels...)
+func (l LogLevel) WithOptions(opts ...LogLevelOption) LogLevel {
+	l.opts = append(l.opts, opts...)
 	return l
 }
 
+func (l LogLevel) HandleOptions(f func(LogLevelOption) (string, bool)) (string, bool) {
+	for _, opt := range l.opts {
+		if str, ok := f(opt); ok == true {
+			return str, true
+		}
+	}
+	return "", false
+}
+
+func (l LogLevel) Color() string {
+	return l.color
+}
+
 func (l LogLevel) Formatter() string {
-	return strings.Join(l.Levels, ".")
+	return l.Level
 }
 
 func (l LogLevel) Equal(other LogLevel) bool {
-	return l.color == other.color && slices.Equal(l.Levels, other.Levels)
+	return l.Level == other.Level
 }
 
 type Caller struct {
 	Method string `json:"method"`
 	File   string `json:"file"`
 	Line   int    `json:"line"`
-	color  string
 }
 
-func (c Caller) Colorize(color string) string {
-	var sb strings.Builder
-	sb.Grow(len(color) + len(ClrReset) + 50)
-	sb.WriteString(color)
-	sb.WriteString(c.formatter())
-	sb.WriteString(ClrReset)
-	return sb.String()
-}
-
-func (c Caller) Colorized() string {
-	var sb strings.Builder
-	sb.Grow(len(c.color) + len(ClrReset) + 50)
-	sb.WriteString(c.color)
-	sb.WriteString(c.formatter())
-	sb.WriteString(ClrReset)
-	return sb.String()
-}
-
-func (c Caller) Standard() string {
-	return c.File
-}
-
-func (c Caller) formatter() string {
+func (c Caller) Formatter() string {
 	var sb strings.Builder
 	sb.Grow(len(c.File) + len(c.Method))
 	sb.WriteString(c.File)
@@ -105,6 +74,14 @@ func (c Caller) formatter() string {
 func (c Caller) Equal(other Caller) bool {
 	return c.Line == other.Line &&
 		c.Method == other.Method &&
-		c.File == other.File &&
-		c.color == other.color
+		c.File == other.File
+}
+
+func ColorizeString(str string, ascii string) string {
+	var sb strings.Builder
+	sb.Grow(len(str) + len(ascii) + len(ClrReset))
+	sb.WriteString(ascii)
+	sb.WriteString(str)
+	sb.WriteString(ClrReset)
+	return sb.String()
 }
