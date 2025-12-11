@@ -7,9 +7,6 @@ import (
 )
 
 func BenchmarkLogger(b *testing.B) {
-	null, _ := os.Open(os.DevNull)
-	defer null.Close()
-
 	tmp, _ := os.CreateTemp(os.TempDir(), "benchmarkLogger-*")
 	_ = tmp.Close()
 
@@ -41,13 +38,13 @@ func BenchmarkLogger(b *testing.B) {
 	}{
 		{
 			name: "consoleSerializer",
-			pipe: NewPipe(WithSerializer(NewConsoleSerializer()), WithWriter(NewConsoleWriter(WithCustomStdout(null)))),
+			pipe: NewPipe(WithSerializer(NewConsoleSerializer()), WithWriter(NewConsoleWriter(WithWriterDiscard()))),
 			msg:  "some test text",
 			args: args,
 		},
 		{
 			name: "JsonSerializer",
-			pipe: NewPipe(WithSerializer(NewJSONSerializer()), WithWriter(NewConsoleWriter(WithCustomStdout(null)))),
+			pipe: NewPipe(WithSerializer(NewJSONSerializer()), WithWriter(NewConsoleWriter(WithWriterDiscard()))),
 			msg:  "some test text",
 			args: args,
 		},
@@ -65,7 +62,7 @@ func BenchmarkLogger(b *testing.B) {
 		},
 		{
 			pipes: []*Pipe{
-				NewPipe(WithSerializer(NewConsoleSerializer()), WithWriter(NewConsoleWriter(WithCustomStdout(null)))),
+				NewPipe(WithSerializer(NewConsoleSerializer()), WithWriter(NewConsoleWriter(WithWriterDiscard()))),
 				NewPipe(WithSerializer(NewJSONSerializer()), WithWriter(NewFileWriter(tmp.Name()))),
 			},
 			name: "MultiPipe",

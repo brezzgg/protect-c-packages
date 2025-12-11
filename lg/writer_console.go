@@ -1,10 +1,14 @@
 package lg
 
-import "os"
+import (
+	"io"
+	"os"
+)
 
 type (
 	consoleWriter struct {
-		stdout *os.File
+		stdout  *os.File
+		discard bool
 	}
 
 	ConsoleWriterOption func(*consoleWriter)
@@ -26,10 +30,22 @@ func WithCustomStdout(f *os.File) ConsoleWriterOption {
 	}
 }
 
+func WithWriterDiscard() ConsoleWriterOption {
+	return func(w *consoleWriter) {
+		w.discard = true
+	}
+}
+
 func (c *consoleWriter) Write(str string) error {
+	if c.discard {
+		_, _ = io.Discard.Write([]byte(str))
+		return nil
+	}
+
 	if _, err := c.stdout.WriteString(str + "\n"); err != nil {
 		return err
 	}
+
 	return nil
 }
 

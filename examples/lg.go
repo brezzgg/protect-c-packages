@@ -4,18 +4,22 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/brezzgg/go-packages/examples/lg_ex"
 	"github.com/brezzgg/go-packages/lg"
 )
 
 func main() {
-	// execute end tasks without Fatal, Panic or Exit functions
-	defer lg.GlobalLogger.End().Execute()
-
 	ExampleSetupLogger()
+	lg_ex.ExampleLevelOptions()
 	ExampleLogLevels()
 }
 
 func ExampleSetupLogger() {
+	lg.Log(lg.NewLogLevel(lg.ClrFgYellow, "!Example!").WithOptions(
+		lg.LevelOptionDisableCaller, lg.LevelOptionDisableTime),
+		"Setup logger example",
+	)
+
 	lg.GlobalLogger = lg.NewLogger(
 		lg.WithPipe(
 			lg.NewPipe(
@@ -59,6 +63,11 @@ func ExampleSetupLogger() {
 }
 
 func ExampleLogLevels() {
+	lg.Log(lg.NewLogLevel(lg.ClrFgYellow, "!Example!").WithOptions(
+		lg.LevelOptionDisableCaller, lg.LevelOptionDisableTime),
+		"Log levels example",
+	)
+
 	lg.GlobalLogger.Close()
 	lg.GlobalLogger = lg.NewLogger()
 
