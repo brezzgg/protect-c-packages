@@ -14,13 +14,6 @@ var (
 // --------------- Logger struct functions ---------------
 
 /*
-SetCustomPipes allows you to customize the global logger.
-*/
-func (l *Logger) SetCustomPipes(pipes ...*Pipe) {
-	l.pipes = pipes
-}
-
-/*
 Debug function outputs a log with the level LogLevelDebug.
 */
 func (l *Logger) Debug(args ...any) {
@@ -176,6 +169,20 @@ func Close() {
 }
 
 /*
+Invoked function invokes the equivalent function Logger.Invoked for the global logger.
+*/
+func Invoked() {
+	GlobalLogger.Invoked()
+}
+
+/*
+Exit function invokes the equivalent function Logger.Exit for the global logger.
+*/
+func Exit(code int) {
+	GlobalLogger.Exit(code)
+}
+
+/*
 F function is alias for fmt.Sprintf function.
 */
 func F(format string, args ...any) string {
@@ -187,4 +194,11 @@ T function is alias for strings.TrimSpaces function.
 */
 func T(str string) string {
 	return strings.TrimSpace(str)
+}
+
+/*
+Ef function is alias for fmt.Errorf function.
+*/
+func Ef(format string, args ...any) error {
+	return fmt.Errorf(format, args...)
 }
