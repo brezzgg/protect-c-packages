@@ -1,5 +1,7 @@
 package lg
 
+import "fmt"
+
 type (
 	Pipe struct {
 		ser Serializer
@@ -10,7 +12,10 @@ type (
 )
 
 func (p *Pipe) Handle(msg Message) {
-	_ = p.wri.Write(p.ser.Serialize(msg))
+	err := p.wri.Write(p.ser.Serialize(msg))
+	if err != nil {
+		fmt.Printf("lg: writer error: %s\n", err.Error())
+	}
 }
 
 func NewPipe(opts ...PipeOption) *Pipe {
