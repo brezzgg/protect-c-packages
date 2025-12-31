@@ -24,7 +24,7 @@ func GetCallerInfo(skip int) Caller {
 		dotNum := strings.LastIndexByte(fnName, '.')
 
 		method = fnName[dotNum+1:]
-		file = fnName[:dotNum]
+		file = strings.ReplaceAll(fnName[:dotNum], "\\", "/")
 	}
 
 	return Caller{
