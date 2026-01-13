@@ -21,6 +21,8 @@ type (
 		typeConv TypeConverter
 		pipes    []*Pipe
 
+		splitFilePrefix bool
+
 		queue     chan Message
 		wg        sync.WaitGroup
 		stop      chan struct{}
@@ -86,6 +88,12 @@ func WithConstantLevelOptions(opts ...LogLevelOption) LoggerOption {
 	}
 }
 
+func WithSplitFilePrefix(split bool) LoggerOption {
+	return func(l *Logger) {
+		l.splitFilePrefix = split
+	}
+}
+
 func (l *Logger) Close() {
 	if !l.closed.Swap(true) {
 		close(l.queue)
@@ -138,10 +146,8 @@ func (l *Logger) Handle(args []any, level LogLevel) {
 		return
 	}
 
-	// TODO: fix
 	offset := 0
-	caller := GetCallerInfo(2)
-	if strings.HasPrefix(caller.File, "github.com/brezzgg/go-packages/lg") {
+	if isBadOffset(2) {
 		offset = 1
 	}
 
@@ -153,7 +159,7 @@ func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message
 	level.opts = append(l.levelOpts, level.opts...)
 
 	msg := Message{
-		Caller: GetCallerInfo(3 + callerOffset),
+		Caller: GetCallerInfo(3 + callerOffset, l.splitFilePrefix),
 		Level:  level,
 		Time:   time.Now(),
 	}
