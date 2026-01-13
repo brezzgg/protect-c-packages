@@ -1,3 +1,4 @@
+// Package lg provide an api to work with Logger
 package lg
 
 import (
