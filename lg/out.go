@@ -9,18 +9,20 @@ import (
 
 type (
 	LogLevel struct {
-		Level string
-		color string
-		opts  []LogLevelOption
+		Level    string
+		color    string
+		opts     []LogLevelOption
+		priority uint16
 	}
 	LogLevelOption string
 )
 
 func NewLogLevel(asciiClr string, level string, opts ...LogLevelOption) LogLevel {
 	return LogLevel{
-		Level: level,
-		color: asciiClr,
-		opts:  opts,
+		Level:    level,
+		color:    asciiClr,
+		opts:     opts,
+		priority: LevelDefaultPriority,
 	}
 }
 
@@ -33,11 +35,15 @@ func (l LogLevel) WithOptions(opts ...LogLevelOption) LogLevel {
 	return l
 }
 
+func (l LogLevel) WithPriority(priority uint16) LogLevel {
+	l.priority = priority
+	return l
+}
+
 func (l LogLevel) HandleOptions(f func(LogLevelOption) (string, bool)) (string, bool) {
 	for _, opt := range l.opts {
-		if str, ok := f(opt); ok == true {
-			return str, true
-		}
+		str, ok := f(opt)
+		return str, ok
 	}
 	return "", false
 }

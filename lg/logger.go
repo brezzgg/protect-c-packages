@@ -21,6 +21,7 @@ type (
 		typeConv TypeConverter
 		pipes    []*Pipe
 
+		level           uint16
 		splitFilePrefix bool
 
 		queue     chan Message
@@ -94,6 +95,18 @@ func WithSplitFilePrefix(split bool) LoggerOption {
 	}
 }
 
+func WithLogLevel(level LogLevel) LoggerOption {
+	return func(l *Logger) {
+		l.level = level.priority
+	}
+}
+
+func WithLogLevelPriority(p uint16) LoggerOption {
+	return func(l *Logger) {
+		l.level = p
+	}
+}
+
 func (l *Logger) Close() {
 	if !l.closed.Swap(true) {
 		close(l.queue)
@@ -143,6 +156,10 @@ func (l *Logger) watchSignals() {
 
 func (l *Logger) Handle(args []any, level LogLevel) {
 	if l.closed.Load() {
+		return
+	}
+
+	if level.priority < l.level {
 		return
 	}
 

@@ -1,13 +1,13 @@
 package lg
 
 var (
-	LogLevelDebug       = NewLogLevel(ClrFgBoldGreen, "Debug")
-	LogLevelInfo        = NewLogLevel(ClrFgBoldBlue, "Info")
-	LogLevelWarn        = NewLogLevel(ClrFgBoldYellow, "Warn")
-	LogLevelError       = NewLogLevel(ClrFgBoldRed, "Error")
-	LogLevelFatal       = NewLogLevel(ClrFgBoldRed, "Fatal")
-	LogLevelPanic       = NewLogLevel(ClrFgBoldRed, "Panic")
-	logLevelLoggerError = NewLogLevel(ClrFgBoldPink, "LoggerError")
+	LogLevelDebug       = NewLogLevel(ClrFgBoldGreen, "Debug").WithPriority(100)
+	LogLevelInfo        = NewLogLevel(ClrFgBoldBlue, "Info").WithPriority(200)
+	LogLevelWarn        = NewLogLevel(ClrFgBoldYellow, "Warn").WithPriority(300)
+	LogLevelError       = NewLogLevel(ClrFgBoldRed, "Error").WithPriority(400)
+	LogLevelFatal       = NewLogLevel(ClrFgBoldRed, "Fatal").WithPriority(500)
+	LogLevelPanic       = NewLogLevel(ClrFgBoldRed, "Panic").WithPriority(600)
+	logLevelLoggerError = NewLogLevel(ClrFgBoldPink, "LoggerError").WithPriority(65535)
 )
 
 const (
@@ -21,6 +21,8 @@ const (
 	LevelOptionDisableTime       LogLevelOption = "time_disable"
 	LevelOptionTimeDisableOffset LogLevelOption = "time_disable_offset"
 )
+
+const LevelDefaultPriority = uint16(200)
 
 const (
 	ClrReset = "\033[0;0m"
