@@ -155,10 +155,6 @@ func (l *Logger) watchSignals() {
 }
 
 func (l *Logger) Handle(args []any, level LogLevel) {
-	if l.closed.Load() {
-		return
-	}
-
 	if level.priority < l.level {
 		return
 	}
@@ -169,6 +165,10 @@ func (l *Logger) Handle(args []any, level LogLevel) {
 	}
 
 	msg := l.buildMessage(args, level, offset)
+
+	if l.closed.Load() {
+		return
+	}
 	l.queue <- msg
 }
 
