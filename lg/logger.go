@@ -176,7 +176,7 @@ func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message
 	level.opts = append(l.levelOpts, level.opts...)
 
 	msg := Message{
-		Caller: GetCallerInfo(3 + callerOffset, l.splitFilePrefix),
+		Caller: GetCallerInfo(3+callerOffset, l.splitFilePrefix),
 		Level:  level,
 		Time:   time.Now(),
 	}
@@ -185,8 +185,8 @@ func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message
 		msg = Message{
 			Caller:  msg.Caller,
 			Level:   logLevelLoggerError,
-			Text:    "Failed to parse message context",
-			Context: C{"parserError": err.Error()},
+			Text:    "failed to parse message context",
+			Context: C{"error": err.Error()},
 			Time:    msg.Time,
 		}
 	}
@@ -205,25 +205,19 @@ func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
 		if len(*msgBody) == 0 {
 			*msgBody = body
 		} else {
-			*msgBody = strings.TrimSuffix(strings.TrimSpace(body), ":") + ": " + strings.TrimSpace(*msgBody)
+			*msgBody = strings.TrimSuffix(
+				strings.TrimSpace(body), ":",
+			) + ": " + strings.TrimSpace(*msgBody)
 		}
 	}
 
 	if len(args) == 0 {
 		return errors.New("no arguments")
 	}
-	if len(args) == 1 {
-		if body, ok := args[0].(string); ok {
-			appendBodyFunc(body)
-			return nil
-		}
-		return errors.New("invalid argument")
-	}
 
-	if body, ok := args[0].(string); ok {
-		appendBodyFunc(body)
-	} else {
-		return errors.New("invalid argument")
+	l.typeConv.ConvAndPushBody(args[0], appendBodyFunc)
+	if len(args) == 1 {
+		return nil
 	}
 
 	if *msgCtx == nil {
@@ -233,7 +227,7 @@ func (l *Logger) CheckArgs(args []any, msgBody *string, msgCtx *C) error {
 		if itemNum == 0 {
 			continue
 		}
-		l.typeConv.ConvAndPush(item, func(k string, v any) {
+		l.typeConv.ConvAndPushContext(item, func(k string, v any) {
 			(*msgCtx)[l.findKey(k, *msgCtx)] = v
 		})
 	}

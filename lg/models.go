@@ -7,8 +7,14 @@ It is used to add context to logs in a convenient way.
 type C map[string]any
 
 type TypeConverter interface {
-	ConvAndPush(item any, push func(key string, val any))
+	ConvAndPushBody(item any, push BodyConverterFunc)
+	ConvAndPushContext(item any, push ContextConverterFunc)
 }
+
+type (
+	BodyConverterFunc func(string)
+	ContextConverterFunc func(string, any)
+)
 
 type Serializer interface {
 	Serialize(m Message) string
