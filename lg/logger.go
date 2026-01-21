@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 	"unicode"
+
+	"github.com/brezzgg/go-packages/schan"
 )
 
 var endTasks = &EndTasks{}
@@ -24,7 +26,7 @@ type (
 		level           uint16
 		splitFilePrefix bool
 
-		queue     chan Message
+		queue     *schan.SafeChannel[Message]
 		wg        sync.WaitGroup
 		stop      chan struct{}
 		closed    atomic.Bool
@@ -38,7 +40,7 @@ func NewLogger(opts ...LoggerOption) *Logger {
 	l := &Logger{
 		pipes:    make([]*Pipe, 0, 1),
 		typeConv: NewDefaultTypeConverter(),
-		queue:    make(chan Message, 8192),
+		queue:    schan.New[Message](8192),
 		stop:     make(chan struct{}),
 	}
 
@@ -79,7 +81,7 @@ func WithCustomTypeConverter(c TypeConverter) LoggerOption {
 
 func WithQueueSize(size int) LoggerOption {
 	return func(l *Logger) {
-		l.queue = make(chan Message, size)
+		l.queue = schan.New[Message](size)
 	}
 }
 
@@ -109,7 +111,7 @@ func WithLogLevelPriority(p uint16) LoggerOption {
 
 func (l *Logger) Close() {
 	if !l.closed.Swap(true) {
-		close(l.queue)
+		l.queue.Close()
 		close(l.stop)
 		l.wg.Wait()
 		for _, pipe := range l.pipes {
@@ -123,7 +125,7 @@ WorkerLoop:
 	for {
 		select {
 		case <-l.stop:
-			for msg := range l.queue {
+			for msg := range l.queue.Chan() {
 				if msg.Text == "" {
 					continue
 				}
@@ -133,7 +135,7 @@ WorkerLoop:
 			}
 			break WorkerLoop
 
-		case msg := <-l.queue:
+		case msg := <-l.queue.Chan():
 			if msg.Text == "" {
 				continue
 			}
@@ -155,6 +157,10 @@ func (l *Logger) watchSignals() {
 }
 
 func (l *Logger) Handle(args []any, level LogLevel) {
+	if l.closed.Load() {
+		return
+	}
+
 	if level.priority < l.level {
 		return
 	}
@@ -165,11 +171,7 @@ func (l *Logger) Handle(args []any, level LogLevel) {
 	}
 
 	msg := l.buildMessage(args, level, offset)
-
-	if l.closed.Load() {
-		return
-	}
-	l.queue <- msg
+	l.queue.Send(msg)
 }
 
 func (l *Logger) buildMessage(m []any, level LogLevel, callerOffset int) Message {
