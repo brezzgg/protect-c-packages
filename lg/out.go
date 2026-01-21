@@ -40,6 +40,26 @@ func (l LogLevel) WithPriority(priority uint16) LogLevel {
 	return l
 }
 
+/*
+LogGlobal function is alias for GlobalLogger.Log
+*/
+func (l LogLevel) LogGlobal(args ...any) {
+	if GlobalLogger == nil {
+		return
+	}
+	GlobalLogger.Log(l, args...)
+}
+
+/*
+Log function is alias for Logger.Log
+*/
+func (l LogLevel) Log(logger *Logger, args ...any) {
+	if logger == nil {
+		return
+	}
+	logger.Log(l, args...)
+}
+
 func (l LogLevel) HandleOptions(f func(LogLevelOption) (string, bool)) (string, bool) {
 	for _, opt := range l.opts {
 		str, ok := f(opt)
